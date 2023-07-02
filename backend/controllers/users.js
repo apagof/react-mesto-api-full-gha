@@ -5,6 +5,7 @@ const User = require('../models/user');
 const NotFoundError = require('../errors/notFoundError');
 const ConflictError = require('../errors/ConflictError');
 const ValidationError = require('../errors/ValidationError');
+const { NODE_ENV, JWT_SECRET } = require('../config');
 
 module.exports.getUsers = (req, res, next) => {
   User.find({})
@@ -12,8 +13,8 @@ module.exports.getUsers = (req, res, next) => {
     .catch(next);
 };
 
-module.exports.getCurrentUser = (req, res, next) => {
-  User.findById(req.user._id)
+const findById = (req, res, next, id) => {
+  User.findById(id)
     .then((user) => {
       if (!user) {
         throw new NotFoundError('Пользователь по указанному _id не найден');
@@ -24,9 +25,23 @@ module.exports.getCurrentUser = (req, res, next) => {
     .catch(next);
 };
 
+module.exports.getCurrentUser = (req, res, next) => {
+  const { _id } = req.user;
+  findById(req, res, next, _id);
+};
+
+module.exports.getUserById = (req, res, next) => {
+  const { userId } = req.params;
+  findById(req, res, next, userId);
+};
+
 module.exports.createUser = (req, res, next) => {
   const {
-    name, about, avatar, email, password,
+    name,
+    about,
+    avatar,
+    email,
+    password,
   } = req.body;
 
   bcrypt.hash(password, 10)
@@ -49,42 +64,9 @@ module.exports.createUser = (req, res, next) => {
     });
 };
 
-module.exports.getUserById = (req, res, next) => {
-  User.findById(req.params.userId)
-    .then((user) => {
-      if (!user) {
-        throw new NotFoundError('Пользователь по указанному _id не найден');
-      } else {
-        next(res.send(user));
-      }
-    })
-    .catch((err) => {
-      if (err instanceof mongoose.Error.CastError) {
-        next(new ValidationError('Переданы некорректные данные _id'));
-      } else {
-        next(err);
-      }
-    });
-};
-
-function cachingDecorator(func) {
-  const cache = new Map();
-
-  return function (x) {
-    if (cache.has(x)) {
-      return cache.get(x);
-    }
-
-    const result = func(x);
-
-    cache.set(x, result);
-    return result;
-  };
-}
-
-function updateUserData(req, res, next, args) {
+const updateUserData = (req, res, next, args) => {
   User.findByIdAndUpdate(req.user._id, args, { new: true, runValidators: true })
-    .then((user) => next(res.send({ data: user })))
+    .then((user) => next(res.send(user)))
     .catch((err) => {
       if (err instanceof mongoose.Error.ValidationError) {
         next(new ValidationError('Переданы некорректные данные'));
@@ -94,16 +76,16 @@ function updateUserData(req, res, next, args) {
         next(err);
       }
     });
-}
+};
 
 module.exports.updateProfile = (req, res, next) => {
   const { name, about } = req.body;
-  cachingDecorator(updateUserData(req, res, next, { name, about }));
+  updateUserData(req, res, next, { name, about });
 };
 
 module.exports.updateAvatar = (req, res, next) => {
   const { avatar } = req.body;
-  cachingDecorator(updateUserData(req, res, next, { avatar }));
+  updateUserData(req, res, next, { avatar });
 };
 
 module.exports.login = (req, res, next) => {
@@ -112,8 +94,10 @@ module.exports.login = (req, res, next) => {
     .then((user) => {
     // аутентификация успешна! пользователь в переменной user
       // создадим токен
-      const token = jwt.sign({ _id: user._id }, 'some-secret-key');
-
+      const token = jwt.sign(
+        { _id: user._id },
+        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
+      );
       // вернём токен
 
       // отправим токен, браузер сохранит его в куках
@@ -124,7 +108,7 @@ module.exports.login = (req, res, next) => {
         httpOnly: true,
         sameSite: true,
       });
-      res.send({ token });
+      res.send({ message: 'Авторизация прошла успешно' });
     })
     .catch(next);
 };
