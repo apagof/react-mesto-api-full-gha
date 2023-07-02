@@ -1,0 +1,4 @@
+.popup_type_image-big {
+  transition: visibility 0.5s, opacity 0.9s ease-in-out;
+  background: rgba(0, 0, 0, 0.9);
+}

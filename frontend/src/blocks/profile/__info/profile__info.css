@@ -1,0 +1,14 @@
+.profile__info {
+  margin: 0;
+  padding: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+@media screen and (max-width: 880px) {
+  .profile__edit-button {
+    width: 18px;
+    height: 18px;
+  }  
+}

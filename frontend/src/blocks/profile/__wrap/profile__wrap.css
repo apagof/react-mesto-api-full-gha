@@ -1,0 +1,6 @@
+.profile__wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: center;
+}
