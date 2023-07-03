@@ -1,6 +1,8 @@
 const router = require('express').Router();
+
 const cookieParser = require('cookie-parser');
 const { celebrate, Joi } = require('celebrate');
+
 const { LINK_REGULAR } = require('../consts');
 
 const {

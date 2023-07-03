@@ -1,3 +1,5 @@
+// eslint-disable-next-line import/no-extraneous-dependencies
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
@@ -5,8 +7,9 @@ const { errors } = require('celebrate');
 const rateLimit = require('express-rate-limit');
 const mainRouter = require('./routes');
 const errorsHandler = require('./middlewares/errorsHandler');
-
-const { PORT = 3000 } = process.env;
+const { requestLogger, errorLogger } = require('./middlewares/logger');
+const cors = require('./middlewares/cors');
+const { MONGODB_URL, PORT } = require('./config');
 
 const app = express();
 
@@ -19,16 +22,22 @@ const limiter = rateLimit({
 
 app.use(express.json());
 app.use(express.urlencoded());
-
-mongoose.connect('mongodb://127.0.0.1:27017/mestodb');
-
 app.use(cookieParser());
 
+app.use(cors);
+
+mongoose.connect(MONGODB_URL);
+
+// Apply the rate limiting middleware to all requests
 app.use(limiter);
+
+app.use(requestLogger); // подключаем логгер запросов
 
 app.use(mainRouter);
 
-app.use(errors());
+app.use(errorLogger); // подключаем логгер ошибок
+
+app.use(errors()); // обработчик ошибок celebrate
 app.use(errorsHandler);
 
 app.listen(PORT, () => {
